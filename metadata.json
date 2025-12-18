@@ -1,0 +1,7 @@
+{
+  "name": "Copy of 设计风格迁移 - Visionary Style Transformer",
+  "description": "A high-end AI design tool that transforms your photos into stunning artistic styles including Renaissance, Watercolor, Cyberpunk, Anime, Chinese Ink, 2D Manga, and 3D Renderings using Google Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
