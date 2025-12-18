@@ -40,7 +40,7 @@ export interface TransformationResult {
   timestamp: number;
 }
 
-export type TextStyle = 'neon' | 'elegant' | 'bold' | 'traditional' | 'brush';
+export type TextStyle = 'neon' | 'elegant' | 'bold' | 'traditional' | 'brush' | 'custom';
 
 export interface PosterText {
   id: string;
@@ -49,6 +49,21 @@ export interface PosterText {
   x: number; // percentage 0-100
   y: number; // percentage 0-100
   fontSize: number; // scale factor
+  fontFamily?: string;
+  color?: string;
+  shadowColor?: string;
+  shadowBlur?: number;
+  glowColor?: string;
+  glowSize?: number;
+}
+
+export interface Sticker {
+  id: string;
+  content: string; // Emoji or URL
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
 }
 
 export type AspectRatio = 'original' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
@@ -59,3 +74,5 @@ export interface HistoryItem {
   style: string;
   date: number;
 }
+
+export type Theme = 'original' | 'tech' | 'cute' | 'cny';

@@ -1,46 +1,91 @@
 
-import { PosterText, TextStyle, AspectRatio } from "../types";
+import { PosterText, TextStyle, AspectRatio, Sticker } from "../types";
 
 export interface ImageAdjustments {
   brightness: number; 
   contrast: number;   
   rotation: number;   
+  blurIntensity: number; // 0-20
   texts?: PosterText[];
+  stickers?: Sticker[];
   aspectRatio: AspectRatio;
 }
 
-const applyTextStyle = (ctx: CanvasRenderingContext2D, style: TextStyle, fontSize: number, canvasWidth: number) => {
-  const baseSize = (canvasWidth / 15) * fontSize; // Adjusted base size for better scaling
+const applyTextStyle = (ctx: CanvasRenderingContext2D, text: PosterText, canvasWidth: number) => {
+  const baseSize = (canvasWidth / 20) * text.fontSize;
   
-  switch (style) {
-    case 'neon':
-      ctx.font = `bold ${baseSize}px sans-serif`;
-      ctx.fillStyle = '#00f2ff';
-      ctx.shadowColor = '#00f2ff';
-      ctx.shadowBlur = baseSize / 3;
-      break;
-    case 'elegant':
-      ctx.font = `italic ${baseSize}px serif`;
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 4;
-      ctx.letterSpacing = "4px";
-      break;
-    case 'bold':
-      ctx.font = `black ${baseSize * 1.2}px "Arial Black", sans-serif`;
-      ctx.fillStyle = '#ffff00';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = baseSize / 15;
-      break;
-    case 'traditional':
-      ctx.font = `bold ${baseSize}px "Kaiti", "STKaiti", serif`;
-      ctx.fillStyle = '#1a1a1a';
-      break;
-    case 'brush':
-      ctx.font = `bold ${baseSize}px cursive`;
-      ctx.fillStyle = '#d63031';
-      break;
+  // Default values
+  let font = text.fontFamily || 'Inter';
+  let color = text.color || '#ffffff';
+  let shadowColor = text.shadowColor || 'rgba(0,0,0,0.5)';
+  let shadowBlur = text.shadowBlur !== undefined ? text.shadowBlur : 4;
+  let glowColor = text.glowColor || 'transparent';
+  let glowSize = text.glowSize || 0;
+
+  // Preset Overrides (if not custom)
+  if (text.style !== 'custom') {
+    switch (text.style) {
+      case 'neon':
+        font = 'Inter';
+        color = '#00f2ff';
+        shadowColor = '#00f2ff';
+        shadowBlur = 20;
+        glowColor = '#00f2ff';
+        glowSize = 10;
+        break;
+      case 'elegant':
+        font = 'serif';
+        color = '#ffffff';
+        shadowColor = 'rgba(0,0,0,0.8)';
+        shadowBlur = 4;
+        break;
+      case 'bold':
+        font = 'Impact, sans-serif';
+        color = '#ffff00';
+        shadowColor = '#000000';
+        shadowBlur = 0;
+        break;
+      case 'traditional':
+        font = 'Ma Shan Zheng, cursive';
+        color = '#1a1a1a';
+        shadowBlur = 0;
+        break;
+      case 'brush':
+        font = 'ZCOOL KuaiLe, cursive';
+        color = '#d63031';
+        shadowColor = '#ffffff';
+        shadowBlur = 0;
+        break;
+    }
   }
+
+  ctx.font = `bold ${baseSize}px "${font}", sans-serif`;
+  ctx.fillStyle = color;
+  
+  // Apply Glow / Shadow
+  if (glowSize > 0 && glowColor !== 'transparent') {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = glowSize;
+    ctx.fillText(text.content, 0, 0); // Draw glow layer
+    ctx.shadowBlur = 0; // Reset for main text
+  }
+
+  // Apply Shadow
+  if (shadowBlur > 0 || text.style === 'bold') {
+    ctx.shadowColor = shadowColor;
+    ctx.shadowBlur = shadowBlur;
+    
+    // For bold style, we often want a hard outline
+    if (text.style === 'bold') {
+       ctx.lineWidth = baseSize / 15;
+       ctx.strokeStyle = shadowColor;
+       ctx.strokeText(text.content, 0, 0);
+    }
+  } else {
+      ctx.shadowColor = 'transparent';
+  }
+
+  ctx.fillText(text.content, 0, 0);
 };
 
 const getTargetDimensions = (srcW: number, srcH: number, ratio: AspectRatio) => {
@@ -87,10 +132,10 @@ export const processImage = (
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject("Canvas context not available");
 
-      // 1. Calculate Crop based on Aspect Ratio
+      // 1. Calculate Dimensions
       const dims = getTargetDimensions(img.width, img.height, adjustments.aspectRatio);
 
-      // 2. Handle Rotation (Swap width/height if vertical)
+      // Handle Rotation (Swap width/height if vertical)
       const isVertical = adjustments.rotation % 180 !== 0;
       const finalCanvasWidth = isVertical ? dims.height : dims.width;
       const finalCanvasHeight = isVertical ? dims.width : dims.height;
@@ -98,44 +143,92 @@ export const processImage = (
       canvas.width = finalCanvasWidth;
       canvas.height = finalCanvasHeight;
 
-      // 3. Apply Filters
-      ctx.filter = `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%)`;
+      // 2. Brightness/Contrast
+      // Note: We apply this before blur so blur picks up the colors correctly,
+      // but ctx.filter applies to drawing operations.
+      const filterString = `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%)`;
 
-      // 4. Draw
+      // 3. Draw Main Image (Sharp Center)
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate((adjustments.rotation * Math.PI) / 180);
       
-      // Draw image using calculated crop coordinates
-      // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-      ctx.drawImage(
-        img, 
-        dims.cropX, dims.cropY, dims.cropW, dims.cropH, 
-        -dims.width / 2, -dims.height / 2, dims.width, dims.height
-      );
+      // If we have blur, we simulate depth of field
+      if (adjustments.blurIntensity > 0) {
+        // Step A: Draw Blurred version first (Background)
+        ctx.save();
+        ctx.filter = `${filterString} blur(${adjustments.blurIntensity}px)`;
+        ctx.drawImage(
+          img, 
+          dims.cropX, dims.cropY, dims.cropW, dims.cropH, 
+          -dims.width / 2, -dims.height / 2, dims.width, dims.height
+        );
+        ctx.restore();
+
+        // Step B: Draw Sharp version with Radial Mask (Subject Focus)
+        // We need an offscreen canvas to create the masked sharp image
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = dims.width;
+        offCanvas.height = dims.height;
+        const offCtx = offCanvas.getContext('2d');
+        if (offCtx) {
+           offCtx.filter = filterString;
+           offCtx.drawImage(img, dims.cropX, dims.cropY, dims.cropW, dims.cropH, 0, 0, dims.width, dims.height);
+           
+           // Create Radial Gradient Mask (Opaque center, Transparent edges)
+           // Keep the subject (center) sharp
+           offCtx.globalCompositeOperation = 'destination-in';
+           const gradient = offCtx.createRadialGradient(
+             dims.width / 2, dims.height / 2, dims.width * 0.2, // Start transparent circle
+             dims.width / 2, dims.height / 2, dims.width * 0.7  // End
+           );
+           gradient.addColorStop(0, 'rgba(0,0,0,1)');
+           gradient.addColorStop(1, 'rgba(0,0,0,0)');
+           offCtx.fillStyle = gradient;
+           offCtx.fillRect(0, 0, dims.width, dims.height);
+           
+           // Composite sharp masked image over blurred background
+           ctx.drawImage(offCanvas, -dims.width / 2, -dims.height / 2);
+        }
+
+      } else {
+        // Standard Drawing without blur
+        ctx.filter = filterString;
+        ctx.drawImage(
+          img, 
+          dims.cropX, dims.cropY, dims.cropW, dims.cropH, 
+          -dims.width / 2, -dims.height / 2, dims.width, dims.height
+        );
+      }
       ctx.restore();
 
-      // 5. Apply Texts
+      // 4. Draw Stickers
+      if (adjustments.stickers) {
+        adjustments.stickers.forEach(sticker => {
+          ctx.save();
+          const x = (sticker.x / 100) * canvas.width;
+          const y = (sticker.y / 100) * canvas.height;
+          ctx.translate(x, y);
+          ctx.rotate((sticker.rotation * Math.PI) / 180);
+          ctx.scale(sticker.scale, sticker.scale);
+          
+          ctx.font = `${canvas.width / 10}px serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(sticker.content, 0, 0);
+          ctx.restore();
+        });
+      }
+
+      // 5. Draw Texts
       if (adjustments.texts && adjustments.texts.length > 0) {
         adjustments.texts.forEach(text => {
           ctx.save();
-          applyTextStyle(ctx, text.style, text.fontSize, canvas.width);
-          
           const posX = (text.x / 100) * canvas.width;
           const posY = (text.y / 100) * canvas.height;
+          ctx.translate(posX, posY);
           
-          if (text.style === 'traditional') {
-            const chars = text.content.split('');
-            const fontSize = parseFloat(ctx.font);
-            chars.forEach((char, i) => {
-              ctx.fillText(char, posX, posY + (i * fontSize * 1.1));
-            });
-          } else {
-            if (text.style === 'bold') {
-              ctx.strokeText(text.content, posX, posY);
-            }
-            ctx.fillText(text.content, posX, posY);
-          }
+          applyTextStyle(ctx, text, canvas.width);
           ctx.restore();
         });
       }
