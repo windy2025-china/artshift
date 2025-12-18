@@ -3,7 +3,10 @@ export enum ArtStyle {
   RENAISSANCE = 'renaissance',
   WATERCOLOR = 'watercolor',
   CHINESE = 'chinese',
+  CHINESE_ILLUSTRATION = 'chinese_illustration',
   COMIC = 'comic',
+  WEBTOON = 'webtoon',
+  SKETCH = 'sketch',
   PHOTOGRAPHY = 'photography',
   CYBERPUNK = 'cyberpunk',
   ANIME = 'anime',
@@ -46,4 +49,13 @@ export interface PosterText {
   x: number; // percentage 0-100
   y: number; // percentage 0-100
   fontSize: number; // scale factor
+}
+
+export type AspectRatio = 'original' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+
+export interface HistoryItem {
+  id: string;
+  imageUrl: string;
+  style: string;
+  date: number;
 }

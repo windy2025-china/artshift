@@ -3,6 +3,27 @@ import { ArtStyle, StyleOption } from './types';
 
 export const STYLE_OPTIONS: StyleOption[] = [
   {
+    id: ArtStyle.CHINESE_ILLUSTRATION,
+    label: '国潮插画',
+    icon: '🐉',
+    description: '新中式工笔，金线描边，绚丽色彩',
+    prompt: 'Transform this image into a modern Chinese "Guochao" illustration style. Combine traditional Gongbi (fine brush) techniques with modern graphic design. Use flat vivid colors (red, teal, gold), distinct outlines, auspicious clouds patterns, and a vector art aesthetic.'
+  },
+  {
+    id: ArtStyle.WEBTOON,
+    label: '韩漫风格',
+    icon: '💅',
+    description: '精致韩流，色彩鲜艳，时尚唯美',
+    prompt: 'Transform this image into a premium Korean Webtoon (Manhwa) style. Use highly detailed digital coloring, glowing lighting effects, polished character features with sharp eyes, and fashionable aesthetics. The colors should be vibrant and the rendering glossy.'
+  },
+  {
+    id: ArtStyle.SKETCH,
+    label: '手绘线稿',
+    icon: '✏️',
+    description: '素描手绘，黑白线条，光影质感',
+    prompt: 'Transform this image into a rough hand-drawn pencil sketch. Use charcoal textures, visible hatching lines for shading, and a monochromatic graphite palette. The style should look like a concept art sketch on textured paper.'
+  },
+  {
     id: ArtStyle.RENAISSANCE,
     label: '文艺复兴',
     icon: '🏛️',
